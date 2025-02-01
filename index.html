@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Chat Demo</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 0 20px;
+            line-height: 1.5;
+        }
+        .chat {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .status {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+        .processing-hint {
+            font-size: 14px;
+            color: #666;
+            background: #f5f5f5;
+            padding: 12px;
+            border-radius: 6px;
+            margin: 10px 0;
+            display: none;
+            align-items: center;
+            gap: 8px;
+        }
+        .processing-hint.visible {
+            display: flex;
+        }
+        textarea {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        button {
+            background: #0070f3;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .messages {
+            margin-bottom: 20px;
+        }
+        .message {
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+        }
+        .user {
+            background: #f0f0f0;
+        }
+        .assistant {
+            background: #f5f5ff;
+        }
+        #stateIndicator {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            padding: 5px 10px;
+            border-radius: 4px;
+            background: #eee;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div id="stateIndicator">Current Tab: Active</div>
+    <h1>AI Chat Demo</h1>
+    <div class="status" id="status">Ready</div>
+    <div class="processing-hint" id="processingHint">
+        💡 Feel free to switch to another tab - I'll update the tab title when I'm done!
+    </div>
+    <div class="chat">
+        <div class="messages" id="messages"></div>
+        <textarea 
+            id="input" 
+            rows="4" 
+            placeholder="Type your message..."
+        ></textarea>
+        <button id="submit">Send Message</button>
+    </div>
+
+    <script>
+        const mockResponses = [
+            "I understand your question. Let me think about that for a moment...",
+            "That's an interesting point you raise. Here's my analysis...",
+            "Based on the available information, I would suggest...",
+            "Let me break this down step by step...",
+        ];
+
+        let isProcessing = false;
+        const originalTitle = "AI Chat Demo";
+        let isTabActive = true;
+
+        // Tab visibility handling
+        let currentState = 'idle';
+        
+        document.addEventListener('visibilitychange', () => {
+            isTabActive = !document.hidden;
+            document.getElementById('stateIndicator').textContent = 
+                `Current Tab: ${isTabActive ? 'Active' : 'Inactive'}`;
+            
+            if (isTabActive) {
+                // Reset title when returning to tab
+                document.title = originalTitle;
+            } else if (isProcessing) {
+                // If we leave the tab while processing, show current state
+                updateTitle(currentState);
+            }
+        });
+
+        // Update title based on state
+        function updateTitle(state) {
+            if (!isTabActive) {
+                switch (state) {
+                    case 'thinking':
+                        document.title = `🤔 Thinking... | ${originalTitle}`;
+                        break;
+                    case 'writing':
+                        document.title = `✍️ Writing... | ${originalTitle}`;
+                        break;
+                    case 'done':
+                        document.title = `✅ Done | ${originalTitle}`;
+                        break;
+                    default:
+                        document.title = originalTitle;
+                }
+            }
+        }
+
+        // Add message to chat
+        function addMessage(content, isUser = false) {
+            const messages = document.getElementById('messages');
+            const div = document.createElement('div');
+            div.className = `message ${isUser ? 'user' : 'assistant'}`;
+            div.textContent = content;
+            messages.appendChild(div);
+            messages.scrollTop = messages.scrollHeight;
+        }
+
+        // Simulate AI processing
+        async function processMessage(message) {
+            isProcessing = true;
+            const status = document.getElementById('status');
+            const submit = document.getElementById('submit');
+            const input = document.getElementById('input');
+            
+            // Disable input while processing
+            submit.disabled = true;
+            input.disabled = true;
+            
+            // Show processing hint
+            document.getElementById('processingHint').classList.add('visible');
+
+            // Add user message
+            addMessage(message, true);
+
+            // Thinking state
+            status.textContent = "Thinking...";
+            currentState = 'thinking';
+            updateTitle('thinking');
+            await new Promise(r => setTimeout(r, 4000));
+
+            // Writing state
+            status.textContent = "Writing...";
+            currentState = 'writing';
+            updateTitle('writing');
+            await new Promise(r => setTimeout(r, 4000));
+
+            // Generate response
+            const response = mockResponses[Math.floor(Math.random() * mockResponses.length)];
+            addMessage(response);
+
+            // Done state
+            status.textContent = "Ready";
+            currentState = 'done';
+            updateTitle('done');
+            
+            // Reset after brief delay
+            setTimeout(() => {
+                if (isTabActive) {
+                    document.title = originalTitle;
+                }
+                isProcessing = false;
+            }, 1500);
+
+            // Re-enable input
+            submit.disabled = false;
+            input.disabled = false;
+            input.value = '';
+            
+            // Hide processing hint
+            document.getElementById('processingHint').classList.remove('visible');
+        }
+
+        // Handle form submission
+        document.getElementById('submit').addEventListener('click', () => {
+            const input = document.getElementById('input');
+            const message = input.value.trim();
+            if (message && !isProcessing) {
+                processMessage(message);
+            }
+        });
+
+        // Handle enter key
+        document.getElementById('input').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                document.getElementById('submit').click();
+            }
+        });
+    </script>
+</body>
+</html>
